@@ -1,6 +1,6 @@
 /*
 @plugin 小地图
-@version 1.13
+@version 1.14
 @author 徐然
 @link https://space.bilibili.com/291565199
 @desc 
@@ -535,6 +535,53 @@ export default class Minimap implements Script<Plugin> {
 				const dotSize = isMobile ? 2 * this.mobileIconScale : 3;
 				const offset = dotSize / 2;
 				ctx.fillRect(px - offset, py - offset, dotSize, dotSize);
+			}
+
+			// === 迷雾探索更新逻辑 ===
+			if (this.fogEnabled && this.fogCtx) {
+				const playerTileX = Math.floor(player.x);
+				const playerTileY = Math.floor(player.y);
+				const fogRadius = this.fogRadius;
+				const fogRadiusSq = fogRadius * fogRadius;
+				
+				const dw = Math.max(1, Math.ceil(this.width / scene.width));
+				const dh = Math.max(1, Math.ceil(this.height / scene.height));
+
+				// 遍历迷雾半径范围内的所有格子
+				for (let dy = -fogRadius; dy <= fogRadius; dy++) {
+					for (let dx = -fogRadius; dx <= fogRadius; dx++) {
+						const tileX = playerTileX + dx;
+						const tileY = playerTileY + dy;
+						
+						// 边界检查
+						if (tileX < 0 || tileX >= scene.width || tileY < 0 || tileY >= scene.height) {
+							continue;
+						}
+						
+						// 圆形半径判断 (性能优先使用平方比较)
+						if (dx * dx + dy * dy > fogRadiusSq) {
+							continue;
+						}
+						
+						// 仅对未探索的格子进行处理
+						if (!this.explored[tileY][tileX]) {
+							this.explored[tileY][tileX] = true;
+							
+							// 增量清除迷雾，无需重绘整张图
+							let fpx = Math.floor((tileX * this.width) / scene.width);
+							let fpy = Math.floor((tileY * this.height) / scene.height);
+							
+							// 移动端横屏坐标转换
+							if (isMobile) {
+								const temp = fpx;
+								fpx = this.width - fpy;
+								fpy = temp;
+							}
+							
+							this.fogCtx.clearRect(fpx, fpy, dw, dh);
+						}
+					}
+				}
 			}
 		}
 
