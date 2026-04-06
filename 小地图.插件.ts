@@ -1,6 +1,6 @@
 /*
 @plugin 小地图
-@version 1.12
+@version 1.13
 @author 徐然
 @link https://space.bilibili.com/291565199
 @desc 
@@ -699,7 +699,7 @@ export default class Minimap implements Script<Plugin> {
 			// 按 order 排序，保证绘制层级一致
 			const sortedMaps = [...scene.parallax.tilemaps].sort(
 				(a: any, b: any) => (a.order ?? 0) - (b.order ?? 0)
-			);
+			).reverse();
 			let index = 0;
 			for (const tilemap of sortedMaps) {
 				if (!(tilemap as any).tiles) continue;
