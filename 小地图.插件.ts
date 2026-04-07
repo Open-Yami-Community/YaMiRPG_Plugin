@@ -1,6 +1,6 @@
 /*
 @plugin 小地图
-@version 1.14
+@version 1.15
 @author 徐然
 @link https://space.bilibili.com/291565199
 @desc 
@@ -206,7 +206,7 @@ export default class Minimap implements Script<Plugin> {
 					if (explored) {
 						// 深拷贝避免后续修改影响存档
 						data.minimapExplored = explored.map((row: boolean[]) =>
-							row.slice()
+							row.slice(),
 						);
 					}
 				}
@@ -242,7 +242,7 @@ export default class Minimap implements Script<Plugin> {
 								path,
 								Stats.debug
 									? JSON.stringify(json, null, 2)
-									: JSON.stringify(json)
+									: JSON.stringify(json),
 							);
 							break;
 						}
@@ -326,7 +326,7 @@ export default class Minimap implements Script<Plugin> {
 				record[0]?.length !== scene.width
 			) {
 				record = Array.from({ length: scene.height }, () =>
-					Array(scene.width).fill(false)
+					Array(scene.width).fill(false),
 				);
 				this.exploredByScene.set(scene.id, record);
 			}
@@ -383,7 +383,7 @@ export default class Minimap implements Script<Plugin> {
 					}
 					this.render();
 				},
-				{ passive: false }
+				{ passive: false },
 			);
 		}
 	}
@@ -426,14 +426,14 @@ export default class Minimap implements Script<Plugin> {
 			// 基于玩家位置调整视图中心，确保玩家始终可见
 			let playerPx = (Party.player.x * this.width) / scene.width;
 			let playerPy = (Party.player.y * this.height) / scene.height;
-			
+
 			// 移动端横屏时需要调整坐标映射
 			if (isMobile) {
 				const temp = playerPx;
 				playerPx = this.width - playerPy;
 				playerPy = temp;
 			}
-			
+
 			shiftX = playerPx;
 			shiftY = playerPy;
 		}
@@ -468,14 +468,14 @@ export default class Minimap implements Script<Plugin> {
 				if (scene.obstacle.get(x, y)) {
 					let px = Math.floor((x * this.width) / scene.width);
 					let py = Math.floor((y * this.height) / scene.height);
-					
+
 					// 移动端横屏时需要调整坐标映射
 					if (isMobile) {
 						const temp = px;
 						px = this.width - py;
 						py = temp;
 					}
-					
+
 					ctx.fillRect(px, py, obstacleSize, obstacleSize);
 				}
 			}
@@ -486,7 +486,7 @@ export default class Minimap implements Script<Plugin> {
 		if (player) {
 			let px = Math.floor((player.x * this.width) / scene.width);
 			let py = Math.floor((player.y * this.height) / scene.height);
-			
+
 			// 移动端横屏时需要调整坐标映射
 			if (isMobile) {
 				const temp = px;
@@ -511,7 +511,7 @@ export default class Minimap implements Script<Plugin> {
 						px - (size >> 1),
 						py - (size >> 1),
 						size,
-						size
+						size,
 					);
 				} else if (
 					player.portrait &&
@@ -543,7 +543,7 @@ export default class Minimap implements Script<Plugin> {
 				const playerTileY = Math.floor(player.y);
 				const fogRadius = this.fogRadius;
 				const fogRadiusSq = fogRadius * fogRadius;
-				
+
 				const dw = Math.max(1, Math.ceil(this.width / scene.width));
 				const dh = Math.max(1, Math.ceil(this.height / scene.height));
 
@@ -552,32 +552,37 @@ export default class Minimap implements Script<Plugin> {
 					for (let dx = -fogRadius; dx <= fogRadius; dx++) {
 						const tileX = playerTileX + dx;
 						const tileY = playerTileY + dy;
-						
+
 						// 边界检查
-						if (tileX < 0 || tileX >= scene.width || tileY < 0 || tileY >= scene.height) {
+						if (
+							tileX < 0 ||
+							tileX >= scene.width ||
+							tileY < 0 ||
+							tileY >= scene.height
+						) {
 							continue;
 						}
-						
+
 						// 圆形半径判断 (性能优先使用平方比较)
 						if (dx * dx + dy * dy > fogRadiusSq) {
 							continue;
 						}
-						
+
 						// 仅对未探索的格子进行处理
 						if (!this.explored[tileY][tileX]) {
 							this.explored[tileY][tileX] = true;
-							
+
 							// 增量清除迷雾，无需重绘整张图
 							let fpx = Math.floor((tileX * this.width) / scene.width);
 							let fpy = Math.floor((tileY * this.height) / scene.height);
-							
+
 							// 移动端横屏坐标转换
 							if (isMobile) {
 								const temp = fpx;
 								fpx = this.width - fpy;
 								fpy = temp;
 							}
-							
+
 							this.fogCtx.clearRect(fpx, fpy, dw, dh);
 						}
 					}
@@ -593,7 +598,7 @@ export default class Minimap implements Script<Plugin> {
 			const color = isEnemy ? this.enemyColor : this.memberColor;
 			let px = Math.floor((actor.x * this.width) / scene.width);
 			let py = Math.floor((actor.y * this.height) / scene.height);
-			
+
 			// 移动端横屏时需要调整坐标映射
 			if (isMobile) {
 				const temp = px;
@@ -618,7 +623,7 @@ export default class Minimap implements Script<Plugin> {
 						px - (size >> 1),
 						py - (size >> 1),
 						size,
-						size
+						size,
 					);
 				} else if (
 					!this._loadingImages.has(actor.portrait) &&
@@ -651,7 +656,7 @@ export default class Minimap implements Script<Plugin> {
 		for (const trigger of scene.trigger.list) {
 			let px = Math.floor((trigger.x * this.width) / scene.width);
 			let py = Math.floor((trigger.y * this.height) / scene.height);
-			
+
 			// 移动端横屏时需要调整坐标映射
 			if (isMobile) {
 				const temp = px;
@@ -673,7 +678,9 @@ export default class Minimap implements Script<Plugin> {
 		if (this.borderWidth > 0) {
 			ctx.save();
 			ctx.strokeStyle = Color.parseCSSColor(this.borderColor);
-			ctx.lineWidth = isMobile ? this.borderWidth * this.mobileIconScale : this.borderWidth;
+			ctx.lineWidth = isMobile
+				? this.borderWidth * this.mobileIconScale
+				: this.borderWidth;
 			if (this.shape === "circle") {
 				if (this.scale === 1) {
 					const radius =
@@ -687,7 +694,7 @@ export default class Minimap implements Script<Plugin> {
 					ctx.lineWidth / 2,
 					ctx.lineWidth / 2,
 					this.width - ctx.lineWidth,
-					this.height - ctx.lineWidth
+					this.height - ctx.lineWidth,
 				);
 			}
 			ctx.restore();
@@ -744,9 +751,7 @@ export default class Minimap implements Script<Plugin> {
 
 		if (scene.parallax && scene.parallax.tilemaps) {
 			// 按 order 排序，保证绘制层级一致
-			const sortedMaps = [...scene.parallax.tilemaps].sort(
-				(a: any, b: any) => (a.order ?? 0) - (b.order ?? 0)
-			).reverse();
+			const sortedMaps = scene.parallax.tilemaps.reverse();
 			let index = 0;
 			for (const tilemap of sortedMaps) {
 				if (!(tilemap as any).tiles) continue;
@@ -818,9 +823,9 @@ export default class Minimap implements Script<Plugin> {
 								ctx.save();
 								if (isMobile) {
 									// 在移动端横屏时，需要旋转每个图块
-									ctx.translate(px + dw/2, py + dh/2);
+									ctx.translate(px + dw / 2, py + dh / 2);
 									ctx.rotate(Math.PI / 2);
-									ctx.translate(-dw/2, -dh/2);
+									ctx.translate(-dw / 2, -dh / 2);
 									ctx.drawImage(img, sx, sy, sw, sh, 0, 0, dh, dw);
 								} else {
 									ctx.drawImage(img, sx, sy, sw, sh, px, py, dw, dh);
@@ -853,7 +858,7 @@ export default class Minimap implements Script<Plugin> {
 								} else {
 									const hash = Array.from(String(data.tileset.id)).reduce(
 										(a, c) => a + (typeof c === "string" ? c.charCodeAt(0) : 0),
-										0
+										0,
 									);
 									color = `hsl(${hash % 360},60%,70%)`;
 								}
@@ -861,9 +866,9 @@ export default class Minimap implements Script<Plugin> {
 							ctx.fillStyle = color;
 							if (isMobile) {
 								ctx.save();
-								ctx.translate(px + dw/2, py + dh/2);
+								ctx.translate(px + dw / 2, py + dh / 2);
 								ctx.rotate(Math.PI / 2);
-								ctx.translate(-dw/2, -dh/2);
+								ctx.translate(-dw / 2, -dh / 2);
 								ctx.fillRect(0, 0, dh, dw);
 								ctx.restore();
 							} else {
@@ -966,7 +971,7 @@ export default class Minimap implements Script<Plugin> {
 			offsetY?: number;
 			x?: number;
 			y?: number;
-		} = {}
+		} = {},
 	): void {
 		this.position = position;
 		this.positionOffsetX = options.offsetX ?? this.positionOffsetX;
