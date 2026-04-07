@@ -1,6 +1,6 @@
 /*
 @plugin 小地图
-@version 1.15
+@version 1.16
 @author 徐然
 @link https://space.bilibili.com/291565199
 @desc 
@@ -187,6 +187,12 @@ export default class Minimap implements Script<Plugin> {
 	private bgCanvas?: HTMLCanvasElement;
 	private bgCtx?: CanvasRenderingContext2D;
 	private bgDirty: boolean = true;
+	/** 有效绘制区域尺寸（保持场景宽高比） */
+	private mapWidth: number = 0;
+	private mapHeight: number = 0;
+	/** 有效绘制区域偏移（居中用） */
+	private mapOffsetX: number = 0;
+	private mapOffsetY: number = 0;
 
 	constructor() {
 		(window as any).Minimap = this;
@@ -393,6 +399,23 @@ export default class Minimap implements Script<Plugin> {
 		const scene = Scene.binding;
 		const ctx = this.ctx;
 		const isMobile = Stats.isMobile();
+
+		// 计算保持场景宽高比的有效绘制区域
+		const sceneAspect = scene.width / scene.height;
+		const canvasAspect = this.width / this.height;
+
+		if (sceneAspect > canvasAspect) {
+			// 场景更宽，以宽度为基准
+			this.mapWidth = this.width;
+			this.mapHeight = this.width / sceneAspect;
+		} else {
+			// 场景更高，以高度为基准
+			this.mapHeight = this.height;
+			this.mapWidth = this.height * sceneAspect;
+		}
+		this.mapOffsetX = (this.width - this.mapWidth) / 2;
+		this.mapOffsetY = (this.height - this.mapHeight) / 2;
+
 		// 清除画布并填充透明背景
 		ctx.clearRect(0, 0, this.width, this.height);
 		ctx.fillStyle = "rgba(0, 0, 0, 0)";
@@ -411,26 +434,26 @@ export default class Minimap implements Script<Plugin> {
 		// 以摄像机中心为缩放原点，保证玩家点在缩放后仍位于小地图中心
 		const cameraCenterX = Camera.scrollCenterX / scene.tileWidth;
 		const cameraCenterY = Camera.scrollCenterY / scene.tileHeight;
-		let shiftX = (cameraCenterX * this.width) / scene.width;
-		let shiftY = (cameraCenterY * this.height) / scene.height;
+		let shiftX = (cameraCenterX * this.mapWidth) / scene.width;
+		let shiftY = (cameraCenterY * this.mapHeight) / scene.height;
 
 		// 视图限制：仅当视图面积小于场景面积时才进行裁剪，
 		// 若场景尺寸不足以填满视图，允许出现边缘留白以保持跟随效果
-		const viewWidth = this.width / this.scale;
-		const viewHeight = this.height / this.scale;
+		const viewWidth = this.mapWidth / this.scale;
+		const viewHeight = this.mapHeight / this.scale;
 
 		const halfViewW = viewWidth / 2;
 		const halfViewH = viewHeight / 2;
 
 		if (Party.player) {
 			// 基于玩家位置调整视图中心，确保玩家始终可见
-			let playerPx = (Party.player.x * this.width) / scene.width;
-			let playerPy = (Party.player.y * this.height) / scene.height;
+			let playerPx = (Party.player.x * this.mapWidth) / scene.width;
+			let playerPy = (Party.player.y * this.mapHeight) / scene.height;
 
 			// 移动端横屏时需要调整坐标映射
 			if (isMobile) {
 				const temp = playerPx;
-				playerPx = this.width - playerPy;
+				playerPx = this.mapWidth - playerPy;
 				playerPy = temp;
 			}
 
@@ -439,13 +462,13 @@ export default class Minimap implements Script<Plugin> {
 		}
 
 		// clamp 以避免出现空白区域
-		shiftX = Math.min(Math.max(shiftX, halfViewW), this.width - halfViewW);
-		shiftY = Math.min(Math.max(shiftY, halfViewH), this.height - halfViewH);
+		shiftX = Math.min(Math.max(shiftX, halfViewW), this.mapWidth - halfViewW);
+		shiftY = Math.min(Math.max(shiftY, halfViewH), this.mapHeight - halfViewH);
 
 		// 先将原点移动到小地图中心，再根据缩放系数放大/缩小，最后把世界坐标系移动到摄像机中心
 		ctx.translate(this.width / 2, this.height / 2);
 		ctx.scale(this.scale, this.scale);
-		ctx.translate(-shiftX, -shiftY);
+		ctx.translate(-shiftX - this.mapOffsetX, -shiftY - this.mapOffsetY);
 
 		if (!this.bgCanvas) this.bgDirty = true;
 
@@ -466,13 +489,13 @@ export default class Minimap implements Script<Plugin> {
 		for (let y = 0; y < scene.height; y++) {
 			for (let x = 0; x < scene.width; x++) {
 				if (scene.obstacle.get(x, y)) {
-					let px = Math.floor((x * this.width) / scene.width);
-					let py = Math.floor((y * this.height) / scene.height);
+					let px = Math.floor((x * this.mapWidth) / scene.width);
+					let py = Math.floor((y * this.mapHeight) / scene.height);
 
 					// 移动端横屏时需要调整坐标映射
 					if (isMobile) {
 						const temp = px;
-						px = this.width - py;
+						px = this.mapWidth - py;
 						py = temp;
 					}
 
@@ -484,13 +507,13 @@ export default class Minimap implements Script<Plugin> {
 		// 绘制玩家
 		const player = Party.player;
 		if (player) {
-			let px = Math.floor((player.x * this.width) / scene.width);
-			let py = Math.floor((player.y * this.height) / scene.height);
+			let px = Math.floor((player.x * this.mapWidth) / scene.width);
+			let py = Math.floor((player.y * this.mapHeight) / scene.height);
 
 			// 移动端横屏时需要调整坐标映射
 			if (isMobile) {
 				const temp = px;
-				px = this.width - py;
+				px = this.mapWidth - py;
 				py = temp;
 			}
 
@@ -544,8 +567,8 @@ export default class Minimap implements Script<Plugin> {
 				const fogRadius = this.fogRadius;
 				const fogRadiusSq = fogRadius * fogRadius;
 
-				const dw = Math.max(1, Math.ceil(this.width / scene.width));
-				const dh = Math.max(1, Math.ceil(this.height / scene.height));
+				const dw = Math.max(1, Math.ceil(this.mapWidth / scene.width));
+				const dh = Math.max(1, Math.ceil(this.mapHeight / scene.height));
 
 				// 遍历迷雾半径范围内的所有格子
 				for (let dy = -fogRadius; dy <= fogRadius; dy++) {
@@ -573,13 +596,13 @@ export default class Minimap implements Script<Plugin> {
 							this.explored[tileY][tileX] = true;
 
 							// 增量清除迷雾，无需重绘整张图
-							let fpx = Math.floor((tileX * this.width) / scene.width);
-							let fpy = Math.floor((tileY * this.height) / scene.height);
+							let fpx = Math.floor((tileX * this.mapWidth) / scene.width);
+							let fpy = Math.floor((tileY * this.mapHeight) / scene.height);
 
 							// 移动端横屏坐标转换
 							if (isMobile) {
 								const temp = fpx;
-								fpx = this.width - fpy;
+								fpx = this.mapWidth - fpy;
 								fpy = temp;
 							}
 
@@ -596,13 +619,13 @@ export default class Minimap implements Script<Plugin> {
 			const isEnemy = Team.isEnemy(actor.teamId, player ? player.teamId : "");
 			const mode = isEnemy ? this.enemyMode : this.memberMode;
 			const color = isEnemy ? this.enemyColor : this.memberColor;
-			let px = Math.floor((actor.x * this.width) / scene.width);
-			let py = Math.floor((actor.y * this.height) / scene.height);
+			let px = Math.floor((actor.x * this.mapWidth) / scene.width);
+			let py = Math.floor((actor.y * this.mapHeight) / scene.height);
 
 			// 移动端横屏时需要调整坐标映射
 			if (isMobile) {
 				const temp = px;
-				px = this.width - py;
+				px = this.mapWidth - py;
 				py = temp;
 			}
 
@@ -654,13 +677,13 @@ export default class Minimap implements Script<Plugin> {
 		// 绘制触发器
 		ctx.fillStyle = Color.parseCSSColor(this.triggerColor);
 		for (const trigger of scene.trigger.list) {
-			let px = Math.floor((trigger.x * this.width) / scene.width);
-			let py = Math.floor((trigger.y * this.height) / scene.height);
+			let px = Math.floor((trigger.x * this.mapWidth) / scene.width);
+			let py = Math.floor((trigger.y * this.mapHeight) / scene.height);
 
 			// 移动端横屏时需要调整坐标映射
 			if (isMobile) {
 				const temp = px;
-				px = this.width - py;
+				px = this.mapWidth - py;
 				py = temp;
 			}
 
@@ -761,8 +784,8 @@ export default class Minimap implements Script<Plugin> {
 				const height = (tilemap as any).height;
 				const tileData = (tilemap as any).tileData;
 				const LoaderRef = Loader;
-				const dw = Math.max(1, Math.ceil(this.width / scene.width));
-				const dh = Math.max(1, Math.ceil(this.height / scene.height));
+				const dw = Math.max(1, Math.ceil(this.mapWidth / scene.width));
+				const dh = Math.max(1, Math.ceil(this.mapHeight / scene.height));
 
 				for (let ty = 0; ty < height; ty++) {
 					for (let tx = 0; tx < width; tx++) {
@@ -803,13 +826,13 @@ export default class Minimap implements Script<Plugin> {
 
 						const startX = (tilemap as any).tileStartX ?? tilemap.x;
 						const startY = (tilemap as any).tileStartY ?? tilemap.y;
-						let px = Math.floor(((startX + tx) * this.width) / scene.width);
-						let py = Math.floor(((startY + ty) * this.height) / scene.height);
+						let px = Math.floor(((startX + tx) * this.mapWidth) / scene.width);
+						let py = Math.floor(((startY + ty) * this.mapHeight) / scene.height);
 
 						// 移动端横屏时需要调整坐标映射
 						if (isMobile) {
 							const temp = px;
-							px = this.width - py;
+							px = this.mapWidth - py;
 							py = temp;
 						}
 
@@ -1001,14 +1024,14 @@ export default class Minimap implements Script<Plugin> {
 
 		ctx.fillStyle = Color.parseCSSColor(this.fogColor);
 		ctx.fillRect(0, 0, this.width, this.height);
-		const dw = Math.max(1, Math.ceil(this.width / scene.width));
-		const dh = Math.max(1, Math.ceil(this.height / scene.height));
+		const dw = Math.max(1, Math.ceil(this.mapWidth / scene.width));
+		const dh = Math.max(1, Math.ceil(this.mapHeight / scene.height));
 
 		for (let y = 0; y < scene.height; y++) {
 			for (let x = 0; x < scene.width; x++) {
 				if (this.explored[y][x]) {
-					const px = Math.floor((x * this.width) / scene.width);
-					const py = Math.floor((y * this.height) / scene.height);
+					const px = Math.floor((x * this.mapWidth) / scene.width);
+					const py = Math.floor((y * this.mapHeight) / scene.height);
 					ctx.clearRect(px, py, dw, dh);
 				}
 			}
